@@ -108,6 +108,7 @@ public class UserServiceImpl implements UserService{
     }
     public static String hashJWTToOpaque(String jwt) throws Exception {
         //SecretKeySpec secretKey = new SecretKeySpec(generateAESKey, "AES");
+        jwt = jwt + UUID.randomUUID();
         Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
         cipher.init(Cipher.ENCRYPT_MODE, generateAESKey());
         byte[] encryptedBytes = cipher.doFinal(jwt.getBytes());
