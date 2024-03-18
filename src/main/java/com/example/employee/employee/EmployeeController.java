@@ -1,6 +1,9 @@
 package com.example.employee.employee;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -10,8 +13,8 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping(path = "api/v1/employee")
-public class EmployeeController {
+@RequestMapping(path = "api/v1")
+public class EmployeeController  {
     private final EmployeeService employeeService;
 
     @Autowired
@@ -19,27 +22,45 @@ public class EmployeeController {
         this.employeeService = employeeService;
     }
 
-    @GetMapping
+
+    @GetMapping(value = "/employee")
+    //@Cacheable(value = "employee",cacheManager = "cacheManager")
     public List<Employee> getEmployee(){
         return employeeService.getEmployee();
     }
-    @PostMapping
-    public Employee registerEmployee(@RequestBody Employee employee){
-       return employeeService.addNewEmployee(employee);
+    @PostMapping("/employee/{companyId}/save")
+    public ResponseEntity<Employee> registerEmployee(@PathVariable(value = "companyId") Long id,@RequestBody Employee employee){
+       return employeeService.addNewEmployee(id,employee);
     }
 
-    @DeleteMapping(path = "{employeeId}")
+    @DeleteMapping(path = "/employee/{employeeId}")
+    //@CacheEvict(value = "employee",key = "#p0")
     public Map<String, Boolean> deleteEmployee(@PathVariable ("employeeId") Long id){
         return  employeeService.deleteEmployee(id);
     }
-    @PutMapping(path = "{employeeId}")
+    @DeleteMapping(path = "/employee/list")
+    //@CacheEvict(value = "employee",key = "#p0")
+    public Map<String, Boolean> deleteEmployee(){
+        return  employeeService.deleteEmployeeAll(List.of(1L,2L));
+    }
+    @PutMapping(path = "/employee/{employeeId}")
+    //@CacheEvict(cacheNames = "employee",key = "#p0")
     public ResponseEntity<Employee> updateEmployee(@PathVariable ("employeeId") Long id,
-                                                   @RequestParam(required = false) String name, @RequestParam(required = false) String email){
-        return employeeService.updateEmployee(id,name , email);
+                                                   @RequestBody Employee employee){
+        return employeeService.updateEmployee(id,employee);
     }
 
-    @GetMapping(path = "{employeeId}")
+    @GetMapping(path = "/employee/{employeeId}")
+    //@Cacheable(cacheNames = "employee",key = "#p0",cacheManager = "cacheManager")
     public Optional<Employee> findEmployeeById (@PathVariable ("employeeId") Long id){
         return employeeService.findEmployeeById(id);
+    }
+    @GetMapping(path = "/employee/find/{email}")
+    public List<Employee> findEmployeeEmail (@PathVariable ("email") String email){
+        return employeeService.findEmployeeByEmail(email);
+    }
+    @GetMapping(path = "/employee/find/age/{age}")
+    public List<Employee> findEmployee (@PathVariable ("age") Long email){
+        return employeeService.findEmployeeByAge(email);
     }
 }

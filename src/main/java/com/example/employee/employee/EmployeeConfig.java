@@ -10,21 +10,13 @@ import java.util.List;
 public class EmployeeConfig {
     @Bean
     CommandLineRunner commandLineRunner (
-            EmployeeRepository employeeRepository){
+            CompanyRepository companyRepository){
+
         return  args -> {
-           Employee nva = new Employee(
-                    "Nguyen Van a",
-                    "nva@gmail.com",
-                    "Ho chi minh",
-                    21
-            );
-            Employee nvb = new Employee(
-                    "tran thi c",
-                    "ttt@gmail.com",
-                    "Ha noi",
-                    40
-            );
-            employeeRepository.saveAll(List.of(nva,nvb));
+            Company company = new Company(1L,"a");
+            Company company1 = new Company(2L,"b");
+            companyRepository.save(company);
+            companyRepository.save(company1);
         };
     }
 }

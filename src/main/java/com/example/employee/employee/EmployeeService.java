@@ -1,33 +1,69 @@
 package com.example.employee.employee;
 
+import org.hibernate.Session;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.util.CollectionUtils;
 
-import javax.transaction.Transactional;
+import javax.persistence.EntityManager;
 import java.util.*;
 
 @Service
-public class EmployeeService {
+@CacheConfig(cacheNames = "EmployeeCache")
+public class EmployeeService  {
     private final EmployeeRepository repo;
+    private final CompanyRepository companyRepository;
+    private final EntityManager entityManager;
 
     @Autowired
-    public EmployeeService(EmployeeRepository repo) {
+    public EmployeeService(EmployeeRepository repo, CompanyRepository companyRepository, EntityManager entityManager) {
         this.repo = repo;
+        this.companyRepository = companyRepository;
+        this.entityManager = entityManager;
     }
+    private RedisTemplate template ;
 
-    @GetMapping
+
+    //@Cacheable(cacheNames = "employees")
     public List<Employee> getEmployee(){
-        return repo.findAll();
+        System.out.println("Get employee is called");
+//        Session session = entityManager.unwrap(Session.class);
+//
+//        // Enable the "deletedEmployeeFilter" filter and set the "isDeleted" parameter to false
+//        session.enableFilter("deletedEmployeeFilter").setParameter("isDeleted", false);
+
+        // Now, you can perform your query
+        List<Employee> response = repo.findAll();
+
+        // Disable the filter to avoid affecting subsequent queries
+//        session.disableFilter("deletedEmployeeFilter");
+        return response;
     }
 
-    public Employee addNewEmployee(Employee employee) {
-         Optional<Employee> employeeByEmail = repo.findEmployeeByEmail(employee.getEmail());
-        if(employeeByEmail.isPresent()){
-            throw new IllegalStateException("Email has been register");
-        }
-        return repo.save(employee);
+    public ResponseEntity<Employee> addNewEmployee(Long id,Employee employee) {
+         //Optional<Employee> employeeByEmail = repo.findEmployeeByEmail(employee.getEmail());
+             if (Objects.nonNull(employee.getId())){
+                Employee emp = repo.findById(employee.getId()).orElseThrow(()->new IllegalStateException("Id " +id + " doesn't exit"));
+                if (Objects.nonNull(emp)){
+                    emp.setAddress(employee.getAddress());
+                    emp.setAge(employee.getAge());
+                    emp.setCompany(employee.getCompany());
+                    emp.setDeleted(employee.isDeleted());
+                }
+                repo.save(emp);
+            }else {
+                 Optional<Company> company = companyRepository.findById(id);
+                 company.ifPresent(employee::setCompany);
+                 repo.save(employee);
+             }
+
+
+        return new ResponseEntity<>(employee, HttpStatus.CREATED);
     }
 
 
@@ -41,42 +77,47 @@ public class EmployeeService {
        response.put("Deleted", Boolean.TRUE);
        return response;
     }
-
-//    @Transactional
-//    public void updateEmployee(Long id, String name, String email) {
-//        Employee employee = repo.findById(id).orElseThrow(()->new IllegalStateException("Id "+ id + "doesn't exits"));
-//        if(name != null && name.length() >0 && !Objects.equals(employee.getName(),name)){
-//            employee.setName(name);
-//        }
-//        if(email != null && email.length() >0 && !Objects.equals(employee.getEmail(),email)){
-//            Optional <Employee> employeeOptional = repo.findEmployeeByEmail(email);
-//            if (employeeOptional.isPresent()){
-//                throw new IllegalStateException("Email exist");
-//            }
-//            employee.setEmail(email);
-//        }
-//    }
+    public Map<String, Boolean> deleteEmployeeAll(List<Long> id) {
+        repo.deleteAllByIdIn(id);
+        Map<String, Boolean> response = new HashMap<>();
+        response.put("Deleted", Boolean.TRUE);
+        return response;
+    }
 
     public Optional<Employee> findEmployeeById(Long id) {
+        System.out.println("Get employee is called");
+        //Session session = entityManager.unwrap(Session.class);
+
+        // Enable the "deletedEmployeeFilter" filter and set the "isDeleted" parameter to false
+        //session.enableFilter("deletedEmployeeFilter").setParameter("isDeleted", false);
+
+        // Now, you can perform your query
         boolean exist = repo.existsById(id);
+
+        // Disable the filter to avoid affecting subsequent queries
+        //session.disableFilter("deletedEmployeeFilter");
+
         if(!exist){
             throw new IllegalStateException("Id " + id+ " does not exist!!!");
         }
         return repo.findById(id);
     }
 
-    public ResponseEntity<Employee> updateEmployee(Long id, String name, String email) {
-        Employee emp = repo.findById(id).orElseThrow(()->new IllegalStateException("Id " +id + " doesn't exit"));
-        if(name != null && name.length() >0 && !Objects.equals(emp.getName(),name)){
-            emp.setName(name);
-        }
-        if(email != null && email.length() >0 && !Objects.equals(emp.getEmail(),email)){
-            Optional <Employee> employeeOptional = repo.findEmployeeByEmail(email);
-            if (employeeOptional.isPresent()){
-                throw new IllegalStateException("Email exist");
-            }
-            emp.setEmail(email);
-        }
+    public ResponseEntity<Employee> updateEmployee(Long id, Employee employee) {
+        Employee emp = repo.findById(employee.getId()).orElseThrow(()->new IllegalStateException("Id " +id + " doesn't exit"));
+        emp.setAddress(employee.getAddress());
+        emp.setAge(employee.getAge());
+        emp.setCompany(employee.getCompany());
         return ResponseEntity.ok(repo.save(emp));
     }
+
+    public List<Employee> findEmployeeByEmail(String email){
+        List<Employee> emp = repo.findEmployeeByEmailAndDeletedFalse(email);
+        return emp;
+    }
+    public List<Employee> findEmployeeByAge(Long age){
+        List<Employee> emp = repo.findEmployee(age);
+        return emp;
+    }
+
 }

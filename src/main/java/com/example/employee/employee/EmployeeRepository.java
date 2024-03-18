@@ -4,11 +4,17 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import javax.transaction.Transactional;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+@Transactional
+public interface EmployeeRepository extends JpaRepository<Employee, Long>  {
 
-    @Query("SELECT s FROM Employee s WHERE s.email= ?1")
-    Optional<Employee> findEmployeeByEmail(String email);
+    List<Employee> findEmployeeByEmailAndDeletedFalse(String email);
+
+    @Query(value = "Select * from \"employee\" where age =?1 and deleted = false",nativeQuery = true)
+    List<Employee> findEmployee(Long age);
+    void deleteAllByIdIn(List<Long> id);
 }
